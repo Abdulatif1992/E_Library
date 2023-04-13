@@ -3,7 +3,13 @@ import 'package:pdfviewer01/main2.dart';
 import 'package:pdfviewer01/screens/home_screen.dart';
 
 void main() {
-  runApp(const MyApp());
+  ErrorWidget.builder = (FlutterErrorDetails details) {
+    return Container(
+      alignment: Alignment.center,
+      child: Text("Xatoooo"),
+    );
+  };
+  runApp(const MyApp());  
 }
 
 class MyApp extends StatelessWidget {

@@ -57,10 +57,29 @@ class _HomeScrennState extends State<HomeScrenn> {
   Future<bool> getOneBook(int book_id) async {
     try {
       Response response = await post(
-              Uri.http('192.168.10.12:8080', '/api/onebook/$book_id'),
+              Uri.http('192.168.10.12:80', '/api/getbook/$book_id'),
               headers: {"Keep-Alive": "timeout=5, max=1"})
           .timeout(const Duration(seconds: 5));
       if (response.statusCode == 200) {
+        data = await jsonDecode(response.body) as List;
+
+        final databasesPath = await getDatabasesPath();
+        final path = join(databasesPath, 'example.db');
+        Database db = await openDatabase(path, version: 1,
+            onCreate: (Database db, int version) async {
+          await db.execute(
+              'CREATE TABLE Test (id INTEGER PRIMARY KEY, book_id INTEGER, doc_title VARCHAR(255), doc_url VARCHAR(255), base64 TEXT)');
+        });
+        
+        await db.transaction((txn) async {
+          int id1 = await txn.rawInsert(
+              'INSERT INTO Test(book_id, doc_title, doc_url, base64) VALUES(${data[0]['book_id']}, "${data[0]['doc_title']}", "${data[0]['doc_url']}", "${data[0]['base64']}")');
+          //print('inserted1: $id1');
+        });
+        
+        
+
+        await  _openDb();
         print(book_id);
         return true;
       } else {
@@ -74,7 +93,7 @@ class _HomeScrennState extends State<HomeScrenn> {
   Future<Tuple2<List?, String?>> getTuple() async {
     try {
       Response response = await post(
-              Uri.http('192.168.10.12:8080', '/api/booksid'),
+              Uri.http('192.168.10.12:80', '/api/booksid'),
               headers: {"Keep-Alive": "timeout=5, max=1"})
           .timeout(const Duration(seconds: 5));
       //print(response.statusCode);
@@ -92,7 +111,7 @@ class _HomeScrennState extends State<HomeScrenn> {
   void getBooks() async {
     try {
       Response response =
-          await post(Uri.http('192.168.10.12:8080', '/api/pdfbooks'));
+          await post(Uri.http('192.168.10.12:80', '/api/getbook/1111'));
       setState(() {
         data = jsonDecode(response.body) as List;
       });
@@ -103,6 +122,25 @@ class _HomeScrennState extends State<HomeScrenn> {
     }
   }
 
+  Future <void> insertToLocDb(List data) async{
+    //print(data[0]['book_id']);
+    final databasesPath = await getDatabasesPath();
+    final path = join(databasesPath, 'example.db');
+    Database db = await openDatabase(path, version: 1,
+        onCreate: (Database db, int version) async {
+      await db.execute(
+          'CREATE TABLE Test (id INTEGER PRIMARY KEY, book_id INTEGER, doc_title VARCHAR(255), doc_url VARCHAR(255), base64 TEXT)');
+    });
+    print(data[0]['base64']);
+      
+    // await db.transaction((txn) async {
+    //   int id1 = await txn.rawInsert(
+    //       'INSERT INTO Test(book_id, doc_title, doc_url, base64) VALUES(${data[0]['book_id']}, "${data[0]['doc_title']}", "${data[0]['doc_url']}", "${data[0]['base64']}")');
+    //   //print('inserted1: $id1');
+    // });
+    // await  _openDb();
+  } 
+  
   Future<void> _openDb() async {
     final databasesPath = await getDatabasesPath();
     final path = join(databasesPath, 'example.db');
@@ -133,6 +171,7 @@ class _HomeScrennState extends State<HomeScrenn> {
 
     //Get the records
     list = await db.rawQuery('SELECT * FROM Test');
+    //print(list[0]['base64']);
     setState(() {
       list = list;
     });
@@ -143,8 +182,9 @@ class _HomeScrennState extends State<HomeScrenn> {
     //     ['updated name', '9876', 'some name']);
     // print('updated: $count');
 
-    // await db.rawDelete('DELETE FROM Test WHERE name = ?', ['another name']);
-    // assert(count == 1);
+    //await db.rawDelete('DELETE FROM Test WHERE book_id = 1112');
+    //await db.rawDelete('DELETE FROM Test');
+    //assert(count == 1);
 
     // Close the database
     await db.close();
@@ -222,7 +262,7 @@ class _HomeScrennState extends State<HomeScrenn> {
                                         ),
                                       ),
                                       Image.memory(
-                                        base64Decode(doc['base64']!),
+                                        base64Decode("${doc['base64']}"),
                                       ),
                                       Positioned(
                                         bottom: 0,
